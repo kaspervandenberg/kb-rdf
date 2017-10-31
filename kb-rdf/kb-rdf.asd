@@ -14,9 +14,11 @@
   :description "RDF & SPARQL querying"
   :serial T
   :components ((:file "package")
-               (:file "sparql-query"))
+               (:file "sparql-query")
+               (:file "rdf-triples-to-list"))
   :depends-on ("drakma"
                "cl-rdfxml"
-               "puri"))
+               "puri"
+               "flexi-streams"))
 
 

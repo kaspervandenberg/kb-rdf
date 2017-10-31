@@ -7,5 +7,6 @@
            :*sparql-update-endpoint*
            :*default-prefixes*
            :sparql-query
-           :sparql-update))
+           :sparql-update
+           :query-list))
 

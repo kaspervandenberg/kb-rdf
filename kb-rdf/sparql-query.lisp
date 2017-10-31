@@ -14,11 +14,11 @@
    accepts as content type")
 
 (defparameter *default-prefixes*
-  '((:rdf . "http://www.w3.org/1999/02/22-rdf-syntax-ns\#")
-    (:rdfs . "http://www.w3.org/2000/01/rdf-schema#\#")
-    (:xsd . "http://www.w3.org/2001/XMLSchema#\#")
-    (:fn . "http://www.w3.org/2005/xpath-functions#\#")
-    (:owl . "http://www.w3.org/2002/07/owl#\#")
+  '((:rdf . "http://www.w3.org/1999/02/22-rdf-syntax-ns#")
+    (:rdfs . "http://www.w3.org/2000/01/rdf-schema#")
+    (:xsd . "http://www.w3.org/2001/XMLSchema#")
+    (:fn . "http://www.w3.org/2005/xpath-functions#")
+    (:owl . "http://www.w3.org/2002/07/owl#")
     (:dc . "http://purl.org/dc/elements/1.1/")))
 
 
@@ -27,8 +27,11 @@
    `triple-receiver-f` a call back function called with three arguments: subject, predicate, & object; see cl-rdfxml:parse-document."
   (check-type construct-query string "a SPARQL construct-query; e.g. 'construct { ?s ?p ?o. } where { ?s ?p ?o. }'")
   (check-type endpoint string "an URL to a sparql endpoint")
-  (let ((rdf-reply (http-request endpoint :parameters (build-parameter-list "query" construct-query :prefixes prefixes) :additional-headers *content-negotiation-headers*)))
-    (parse-document triple-receiver-f rdf-reply)))
+  (let ((rdf-reply (http-request endpoint 
+                                 :parameters (build-parameter-list "query" construct-query :prefixes prefixes)
+                                 :additional-headers *content-negotiation-headers*)))
+    (restart-case (parse-document triple-receiver-f rdf-reply)
+      (show-faulty-document () (write rdf-reply)))))
 
 
 (defun sparql-update (update-query &key prefixes (endpoint *sparql-update-endpoint*))
@@ -52,6 +55,12 @@
   (list (cons query-key (format nil "~/KB-RDF::FORMAT-PREFIX-LIST/~&~a" prefixes query))))
 
 
+(defun format-prefix-list (stream prefixes &optional colon-p at-sign-p)
+  "Format a list of prefixes as SPARQL prefix declarations."
+  (declare (ignore colon-p at-sign-p))
+  (format stream "~{~/KB-RDF::FORMAT-PREFIX/~^~%~}" prefixes))
+
+
 (defun format-prefix (stream prefix &optional colon-p at-sign-p)
   "Format `prefix` as a SPARQL prefix declaration."
   (declare (ignore colon-p at-sign-p))
@@ -61,9 +70,3 @@
   (format stream "prefix ~a: <~a>" 
           (string-downcase (symbol-name (car prefix)))
           (cdr prefix)))
-
-
-(defun format-prefix-list (stream prefixes &optional colon-p at-sign-p)
-  "Format a list of prefixes as SPARQL prefix declarations."
-  (declare (ignore colon-p at-sign-p))
-  (format stream "~{~/KB-RDF::FORMAT-PREFIX/~^~%~}" prefixes))
