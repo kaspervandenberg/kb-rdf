@@ -9,7 +9,8 @@
   ((main :initform nil)))
 
 (defclass CNode ()
-  ((filled-nodes :documentation
+  ((filled-nodes :initform 0
+                 :documentation
 		 "Bitmask with a `#b1` when this `cnode` contains a subnode with 
                   `hierarchical-key-fragment` with the given bit and `#b0` when this `cnode` contains 
                   no such subnode")
@@ -48,24 +49,13 @@
 		     from 0
 		     below (hierarchical-key-fragment cnode hierarchical-key)
 		       collect (ash #b1 i))))
-(defgeneric hierarchical-key-prev-mask (cnode hierarchical-key)
-  (:documentation "Return a bitmask for `filled-nodes` which selects all keys that come before `hierarchical-key`."))
 
-(defgeneric hierarchical-key-pointer-index (cnode hierarchical-key)
-  (:documentation "Return the index in `pointers` of `cnode` for `hierarchical-key`."))
+(defun hierarchical-key-pointer-index (cnode hierarchical-key)
+  "Return the index in `pointers` of `cnode` for `hierarchical-key`."
+  (logcount (logand (hierarchical-key-prev-mask cnode hierarchical-key)
+		    (slot-value cnode 'filled-nodes))))
 
 
-;; TODO Werkt niet conversie bitvector en int niet ondersteund
-(let ((masks (make-array *bucket-size* :initial-contents
-			 (loop for i from 0 below *bucket-size* collect
-			      (concatenate 'bit-vector
-					   (loop for j from i below *bucket-size* collect #b0)
-					   (loop for j from 0 below i collect #b1))))))
-  (defmethod hierarchical-key-prev-mask ((CNode cnode) hierarchical-key)
-    (aref masks (hierarchical-key-fragment cnode hierarchical-key))))
-  
-(defmethod hierarchical-key-pointer-index ((Cnode cnode) hierarchical-key)
-  (count #b1 (bit-and (slot-value cnode 'filled-nodes) (hierarchical-key-prev-mask cnode hierarchical-key))))
 
 
 
@@ -81,6 +71,12 @@
 
 (nth 0 '(resource "http://example.org/pred" "http://example.org/subj2"))
 
+(let* ((prefix "http://rdf.kaspervandenberg.net/test/")
+       (s1 (concatenate 'string prefix "subj1"))
+       (p1 (concatenate 'string prefix "pred1"))
+       (o1 (concatenate 'string prefix "obj1"))
+       (t1 (list s1 p1 o1))
+       (cn1 (make-instance 'cnode))))
 (logcount 6)
 
 (- (ash 1 (hash-fragment test-expr 0)) 1)
