@@ -1,6 +1,4 @@
-
 (defvar *bucket-size* 64)
-
 (defvar *bucket-bitmask* #b111111)
 (defvar *bucket-bitmask-length* 6)
 
@@ -26,6 +24,7 @@
 		   "Which fragment of the key of the `hierarchical-key` does this `conde` use to
                     order its subnodes?")))
 
+
 (defun hash-fragment (cnode key)
   "Return the fragment of the hash code of `key` for a subnode of `cnode`."
   (logand *bucket-bitmask*
@@ -33,16 +32,16 @@
 	       (* -1 *bucket-bitmask-length*
 		  (slot-value cnode 'fragment-index)))))
 
-(defun hierarchical-key-fragment (cnode hierarchical-key)
-  "Return the key-fragment of the `hierarchical-key` to select the subnode branch of `cnode`."
+(defun hierarchical-key-hash-fragment (cnode hierarchical-key)
+  "Return the hash-key-fragment of the `hierarchical-key` to select the subnode branch of `cnode`."
   (hash-fragment cnode (nth (slot-value cnode 'key-index) hierarchical-key)))
 
 (defun hierarchical-key-bit (cnode hierarchical-key)
-  "Return a bitmask for `filled-nodes` that has the bit for hierarchical-key-fragment '1' and the 
-   other bits '0'."
-  (ash #b1 (hierarchical-key-fragment cnode hierarchical-key)))
+  "Return a bitmask for `filled-nodes` that has the bit for hierarchical-key-hash-fragment '1' and
+   the other bits '0'."
+  (ash #b1 (hierarchical-key-hash-fragment cnode hierarchical-key)))
 
-(defun hierarchical-key-prev-mask (cnode hierarchical-key)
+(defun hierarchical-key-previous-nodes-mask (cnode hierarchical-key)
   "Return a bitmask for `filled-nodes` which selects all keys that come before `hierarchical-key`."
   (apply #'logior (loop
 		     for i
@@ -52,7 +51,7 @@
 
 (defun hierarchical-key-pointer-index (cnode hierarchical-key)
   "Return the index in `pointers` of `cnode` for `hierarchical-key`."
-  (logcount (logand (hierarchical-key-prev-mask cnode hierarchical-key)
+  (logcount (logand (hierarchical-key-previous-nodes-mask cnode hierarchical-key)
 		    (slot-value cnode 'filled-nodes))))
 
 
