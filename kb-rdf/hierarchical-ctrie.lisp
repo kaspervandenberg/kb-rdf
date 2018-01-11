@@ -36,23 +36,49 @@
   "Return the hash-key-fragment of the `hierarchical-key` to select the subnode branch of `cnode`."
   (hash-fragment cnode (nth (slot-value cnode 'key-index) hierarchical-key)))
 
+(defun hash-bit (hash)
+  "Return the bitmask for `filled-nodes` that has the bit for `hash` '1' and the other bits '0'."
+  (ash #b1 hash))
+
 (defun hierarchical-key-bit (cnode hierarchical-key)
   "Return a bitmask for `filled-nodes` that has the bit for hierarchical-key-hash-fragment '1' and
    the other bits '0'."
-  (ash #b1 (hierarchical-key-hash-fragment cnode hierarchical-key)))
+  (hash-bit (hierarchical-key-hash-fragment cnode hierarchical-key)))
 
-(defun hierarchical-key-previous-nodes-mask (cnode hierarchical-key)
-  "Return a bitmask for `filled-nodes` which selects all keys that come before `hierarchical-key`."
+(defun hash-previous-nodes-mask (hash)
+  "Return a bitmask for `filled-nodes` which selects all hashes that come before `hash`."
   (apply #'logior (loop
 		     for i
 		     from 0
-		     below (hierarchical-key-fragment cnode hierarchical-key)
-		       collect (ash #b1 i))))
+		     below hash
+		       collect (hash-bit i))))
+
+(defun hierarchical-key-previous-nodes-mask (cnode hierarchical-key)
+  "Return a bitmask for `filled-nodes` which selects all keys that come before `hierarchical-key`."
+  (hash-previous-nodes-mask (hierarchical-key-hash-fragment cnode hierarchical-key)))
+
+(defun hash-pointer-index (cnode hash)
+  "Return the index in `pointers` of `cnode` for `hash`."
+  (logcount (logand (hash-previous-nodes-mask hash)
+		    (slot-value cnode 'filled-nodes))))
 
 (defun hierarchical-key-pointer-index (cnode hierarchical-key)
   "Return the index in `pointers` of `cnode` for `hierarchical-key`."
   (logcount (logand (hierarchical-key-previous-nodes-mask cnode hierarchical-key)
 		    (slot-value cnode 'filled-nodes))))
+
+(defun lookup (cnode hierarchical-key)
+  "Return the subnode of `cnode` via its hash key"
+  (let* ((hash (hierarchical-key-hash-fragment cnode hierarchical-key))
+	 (key-bit (logand (slot-value cnode 'filled-nodes)
+			  (hash-bit hash)))
+	 (index (hash-pointer-index cnode hash))
+	 (ptrs (slot-value cnode 'pointers)))
+    (if (and key-bit
+	     (< index (length ptrs)))
+	(aref ptrs (hash-pointer-index cnode hash))
+	nil)))
+
 
 
 
@@ -76,6 +102,17 @@
        (o1 (concatenate 'string prefix "obj1"))
        (t1 (list s1 p1 o1))
        (cn1 (make-instance 'cnode))))
+
+(let* ((prefix "http://rdf.kaspervandenberg.net/test/")
+       (s1 (concatenate 'string prefix "subj1"))
+       (p1 (concatenate 'string prefix "pred1"))
+       (o1 (concatenate 'string prefix "obj1"))
+       (t1 (list s1 p1 o1))
+       (cn1 (make-instance 'cnode)))
+	   (setf (slot-value cn1 'filled-nodes) (hierarchical-key-bit cn1 t1))
+	   (setf (slot-value cn1 'pointers) #('ptr1))
+	   (lookup cn1 t1))
+
 (logcount 6)
 
 (- (ash 1 (hash-fragment test-expr 0)) 1)
