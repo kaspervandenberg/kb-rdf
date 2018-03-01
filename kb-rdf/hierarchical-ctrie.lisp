@@ -1,6 +1,6 @@
-(defvar *bucket-size* 64)
-(defvar *bucket-bitmask* #b111111)
-(defvar *bucket-bitmask-length* 6)
+(defconstant bucket-size 64)
+(defconstant bucket-bitmask #b111111)
+(defconstant bucket-bitmask-length 6)
 
 
 (defclass INode ()
@@ -31,9 +31,9 @@
 
 (defun hash-fragment (cnode key)
   "Return the fragment of the hash code of `key` for a subnode of `cnode`."
-  (logand *bucket-bitmask*
+  (logand bucket-bitmask
 	  (ash (sxhash key)
-	       (* -1 *bucket-bitmask-length*
+	       (* -1 bucket-bitmask-length
 		  (slot-value cnode 'fragment-index)))))
 
 (defun hierarchical-key-hash-fragment (cnode hierarchical-key)
