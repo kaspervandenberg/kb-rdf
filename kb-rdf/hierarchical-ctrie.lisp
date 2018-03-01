@@ -8,20 +8,24 @@
 
 (defclass CNode ()
   ((filled-nodes :initform 0
+		 :initarg :filled-nodes
                  :documentation
 		 "Bitmask with a `#b1` when this `cnode` contains a subnode with 
                   `hierarchical-key-fragment` with the given bit and `#b0` when this `cnode` contains 
                   no such subnode")
    (pointers :initform (make-array '(0))
+	     :initarg :pointers
 	     :documentation
 	     "Array with pointers to subnodes. The number of `#b1` bits upto the the bit for the 
               subnode's hash defines the position of the pointer in `pointers`.")
    (key-index :initform 0
+	      :initarg :key-index
 	      :documentation
 	      "Which key of the `hierarchical-key` does this `cnode` use to order its subnodes?")
    (fragment-index :initform 0
+		   :initarg :fragment-index
 		   :documentation
-		   "Which fragment of the key of the `hierarchical-key` does this `conde` use to
+		   "Which fragment of the key of the `hierarchical-key` does this `cnode` use to
                     order its subnodes?")))
 
 
