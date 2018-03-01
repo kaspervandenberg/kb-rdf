@@ -83,8 +83,10 @@
 	(aref ptrs (hash-pointer-index cnode hash))
 	nil)))
 
-
-
+(defun safe-subseq (sequence start &optional end)
+  (let ((len (length sequence)))
+    (if (< start len)
+	(subseq sequence start (if end (min end len) len)))))
 
 
 
