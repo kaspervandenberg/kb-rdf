@@ -88,6 +88,9 @@
     (if (< start len)
 	(subseq sequence start (if end (min end len) len)))))
 
+(defmethod print-object ((obj cnode) out)
+  (print-unreadable-object (obj out :type t)
+    (format out "m: ~,,'-,4:b~%ptrs: ~a" (slot-value obj 'filled-nodes) (slot-value obj 'pointers))))
 
 
 ;; Try out
