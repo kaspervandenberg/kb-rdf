@@ -71,17 +71,21 @@
   (logcount (logand (hierarchical-key-previous-nodes-mask cnode hierarchical-key)
 		    (slot-value cnode 'filled-nodes))))
 
-(defun lookup (cnode hierarchical-key)
+(defun hierarchical-key-find-index (cnode hierarchical-key)
+  "Return both `hierarchical-key-bit` and `hierarchical-key-pointer-index`."
+  (let ((hash (hierarchical-key-hash-fragment cnode hierarchical-key)))
+    (values (not (eq (logand (slot-value cnode 'filled-nodes)
+			     (hash-bit hash))
+		     0))
+	    (hash-pointer-index cnode hash))))
+
+(defun lookup-child (cnode hierarchical-key)
   "Return the subnode of `cnode` via its hash key"
-  (let* ((hash (hierarchical-key-hash-fragment cnode hierarchical-key))
-	 (key-bit (logand (slot-value cnode 'filled-nodes)
-			  (hash-bit hash)))
-	 (index (hash-pointer-index cnode hash))
-	 (ptrs (slot-value cnode 'pointers)))
-    (if (and key-bit
-	     (< index (length ptrs)))
-	(aref ptrs (hash-pointer-index cnode hash))
-	nil)))
+  (multiple-value-bind (foundp index) (hierarchical-key-find-index cnode hierarchical-key)
+    (let ((ptrs (slot-value cnode 'pointers)))
+      (and foundp
+	   (< index (length ptrs))
+	   (aref ptrs index)))))
 
 (defun safe-subseq (sequence start &optional end)
   (let ((len (length sequence)))
@@ -117,10 +121,13 @@
        (p1 (concatenate 'string prefix "pred1"))
        (o1 (concatenate 'string prefix "obj1"))
        (t1 (list s1 p1 o1))
+       (t2 (list o1 p1 s1))
        (cn1 (make-instance 'cnode)))
 	   (setf (slot-value cn1 'filled-nodes) (hierarchical-key-bit cn1 t1))
 	   (setf (slot-value cn1 'pointers) #('ptr1))
-	   (lookup cn1 t1))
+					(hierarchical-key-find-index cn1 t2)
+	   ;(lookup-child cn1 t2)
+	   )
 
 (logcount 6)
 
