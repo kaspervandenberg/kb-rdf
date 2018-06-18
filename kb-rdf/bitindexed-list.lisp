@@ -63,8 +63,11 @@ two elements at the same index."))
 (defun find (list index)
   "Return the element at `index` or `nil` when the list does not contain an element for `index`."
   (restart-case
-      (and (containsP list index)
-	   (aref (get-elements list) (element-index list index)))
+      (let ((c (containsP list index)))
+	(values
+	 (and (containsP list index)
+	      (aref (get-elements list) (element-index list index)))
+	 c))
     (not-found () nil)))
 
 
