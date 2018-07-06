@@ -12,6 +12,7 @@
 	   :find
 	   :add
 	   :remove
+	   :get-elements
 	   :print-object
 	   :containsP))
 

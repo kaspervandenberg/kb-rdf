@@ -112,6 +112,11 @@ current operation."))
    "Remove dangling INodes."))
 
 
+(defgeneric print-dot (node out)
+  (:documentation
+   "Render the node and its children to a graphviz graph."))
+
+
 (defmethod find-intern ((node INode) key key-hash level)
   (let ((m (get-main node)))
     (if (not m)
@@ -178,6 +183,49 @@ current operation."))
 	  (error 'duplicate-key :key key :old-value (get-value node) :new-value value))
     (keep-existing-value () node)
     (replace-value-with-new () (make-instance 'SNode :key key :value value))))
+
+
+(defmethod print-object ((obj INode) out)
+  (print-unreadable-object (obj out :type t)
+    (format out "~%m:~a" (get-main obj))))
+
+
+(defmethod print-object ((obj CNode) out)
+  (print-unreadable-object (obj out :type t)
+    (format out "br:~a" (get-branches obj))))
+
+
+(defmethod print-object ((obj SNode) out)
+  (print-unreadable-object (obj out :type t)
+    (format out "key:~a value:~a" (get-key obj) (get-value obj))))
+
+
+(defmethod print-dot ((obj INode) out)
+  (let ((m (get-main obj)))
+    (if m
+	(progn
+	  (format out "~a [shape = Mcircle; width = 0.3; label = \"\"];~%~a -> ~a;~%"
+		  (sxhash obj) (sxhash obj) (sxhash m))
+	  (print-dot m out))
+	(format out "~a [shape = Mcircle; label = \"\"];~%~a -> term~a;~% term~a [shape = plaintext; label = \"⏚\"] ;~%"
+		(sxhash obj) (sxhash obj) (sxhash obj) (sxhash obj)))))
+
+
+(defmethod print-dot ((obj CNode) out)
+  (let ((brs (coerce
+	      (net.kaspervandenberg.kb-rdf.bitindexed-list:get-elements (get-branches obj))
+	      'list)))
+    (format out "~a [shape = record; label =\"~{<~a>~^|~}\"];~%"
+	      (sxhash obj) (mapcar #'(lambda (x) (sxhash x)) brs))
+      (loop for b in brs
+	 do (format out "~a:~a -> ~a;~%"
+		    (sxhash obj) (sxhash b) (sxhash b))
+	 do (print-dot b out))))
+
+
+(defmethod print-dot ((obj SNode) out)
+  (format out "~a [shape = record; label = \"{key: ~a | val: ~a}\"];~%"
+	  (sxhash obj) (get-key obj) (get-value obj)))
 
 
 (defun inode-cas-if-child-updated (inode fupdate &rest update-args)
