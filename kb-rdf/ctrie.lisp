@@ -90,6 +90,15 @@ current operation."))
    "The CTrie already contains the given key it can only contain each key once."))
 
 
+(define-condition key-not-found (error)
+  ((key :initarg :key
+	:reader get-key
+	:documentation
+	"The key that is attempted to remove from the CTrie and that the CTrie does not contain."))
+  (:documentation
+   "The CTrie does not contain the key that you attempt to remove."))
+
+
 (defgeneric find-intern (node key key-hash level)
   (:documentation
    "Search for `key` in `node` and its children.  If it is found, two values are returned: the
@@ -117,6 +126,11 @@ current operation."))
    "Render the node and its children to a graphviz graph."))
 
 
+(defgeneric collect-subtree-values (node)
+  (:documentation
+   "Collect all SNodes in the CTrie rooted at `node`."))
+
+
 (defmethod find-intern ((node INode) key key-hash level)
   (let ((m (get-main node)))
     (if (not m)
@@ -130,9 +144,7 @@ current operation."))
 
 
 (defmethod find-intern ((node CNode) key key-hash level)
-  (multiple-value-bind (child foundP)
-      (net.kaspervandenberg.kb-rdf.bitindexed-list:find (get-branches node)
-							(key-hash-to-index key-hash level))
+  (multiple-value-bind (child foundP) (cnode-find-child node key-hash level)
     (if foundP
 	(find-intern child key key-hash (1+ level))
 	(values child foundP))))
@@ -156,19 +168,17 @@ current operation."))
 
 
 (defmethod add-intern ((node CNode) key key-hash level value)
-  (let ((index (key-hash-to-index key-hash level)))
-    (multiple-value-bind (child foundP)
-	(net.kaspervandenberg.kb-rdf.bitindexed-list:find (get-branches node) index)
-      (if (not foundP)
-	  (make-instance 'CNode :branches (net.kaspervandenberg.kb-rdf.bitindexed-list:add
-					   (get-branches node)
-					   index
-					   (make-instance 'INode :main (make-instance 'SNode
-										      :key key
-										      :value value))))
-	  (progn
-	    (add-intern child key key-hash (1+ level) value)
-	    node)))))
+  (multiple-value-bind (child foundP index) (cnode-find-child node key-hash level)
+    (if (not foundP)
+	(make-instance 'CNode :branches (net.kaspervandenberg.kb-rdf.bitindexed-list:add
+					 (get-branches node)
+					 index
+					 (make-instance 'INode :main (make-instance 'SNode
+										    :key key
+										    :value value))))
+	(progn
+	  (add-intern child key key-hash (1+ level) value)
+	  node))))
 
 
 (defmethod add-intern ((node SNode) key key-hash level value)
@@ -183,6 +193,42 @@ current operation."))
 	  (error 'duplicate-key :key key :old-value (get-value node) :new-value value))
     (keep-existing-value () node)
     (replace-value-with-new () (make-instance 'SNode :key key :value value))))
+
+
+(defmethod remove-intern ((node INode) key key-hash level)
+  (let ((m (get-main node)))
+    (if (not m)
+	(error 'dangling-inode))
+    (handler-case
+	(let ((success-result
+	       (inode-cas-if-child-updated node #'remove-intern key key-hash level)))
+	  (and (get-main node) success-result))	
+      (dangling-inode ()
+	(progn
+	  (inode-cas-if-child-updated node #'cleanup)
+	  (remove-intern node key key-hash level))))))
+
+
+(defmethod remove-intern ((node CNode) key key-hash level)
+  (restart-case
+      (multiple-value-bind (child foundP index) (cnode-find-child node key-hash level)
+	(if foundP
+	    (if (remove-intern child key key-hash (1+ level))
+		node
+		(if (cnode-has-at-least-two-non-empty-branches node)
+		    (make-instance 'CNode :branches (net.kaspervandenberg.kb-rdf.bitindexed-list:remove
+						     (get-branches node)
+						     index))
+		    _tomb-and-rebuild))))
+    (keep-ctrie-as-is () node)))
+
+
+(defmethod remove-intern ((node SNode) key key-hash level)
+  (restart-case
+      (if (equal key (get-key node))
+	  nil
+	  (error 'key-not-found :key key))
+    (keep-ctrie-as-is () node)))
 
 
 (defmethod print-object ((obj INode) out)
@@ -224,8 +270,21 @@ current operation."))
 
 
 (defmethod print-dot ((obj SNode) out)
-  (format out "~a [shape = record; label = \"{key: ~a | val: ~a}\"];~%"
-	  (sxhash obj) (get-key obj) (get-value obj)))
+  (format out "~a [shape = record; label = \"{key: ~a | hash: 0x~x | val: ~a}\"];~%"
+	  (sxhash obj) (get-key obj) (sxhash (get-key obj)) (get-value obj)))
+
+
+(defmethod collect-subtree-values (node INode)
+  (let ((m (get-main node)))
+    (and m (collect-subtree-values m))))
+
+
+(defmethod collect-subtree-values (node CNode)
+  (append (mapcar #'collect-subtree-values (get-branches node))))
+
+
+(defmethod collect-subtree-values (node SNode)
+  (list node))
 
 
 (defun inode-cas-if-child-updated (inode fupdate &rest update-args)
@@ -241,8 +300,22 @@ atomivally update `inode`.`main`."
 	  inode))))
 
 
+(defun cnode-find-child (cnode key-hash level)
+  "Find the CNode's child with the given key-hash.
+Returns three values: the child, a boolean that indicates whether the child was found and the index
+of the child is or could be in the CNode's branches."
+  (let ((index (key-hash-to-index key-hash level)))
+    (multiple-value-bind (child foundP)
+	(net.kaspervandenberg.kb-rdf.bitindexed-list:find (get-branches cnode) index)
+      (values child foundP index))))
+
+
 (defun key-hash-to-index (key-hash level)
   "Select the correct part of `key-hash` for `level`."
   (logand (ash key-hash
 	       (* -1 level bucket-n-bits))
 	  bucket-bitmask))
+
+
+(defun cnode-has-at-least-two-non-empty-branches (node)
+  (<= 2 (count-if #'(lambda (x) (get-main x)) (get-branches node))))

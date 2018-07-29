@@ -45,4 +45,15 @@
 	  (sxhash 'two)
 	  1
 	  2)))
-  (display-ctrie x))
+  (display-ctrie x)
+  (let ((x2 (net.kaspervandenberg.kb-rdf.ctrie:remove-intern x 'two (sxhash 'two) 1)))
+    (display-ctrie x2)))
+
+
+(let ((tr (make-instance 'net.kaspervandenberg.kb-rdf.ctrie:INode
+	  		 :main (make-instance 'net.kaspervandenberg.kb-rdf.ctrie:SNode
+			 		      :key 'one
+					      :value 1))))
+  (display-ctrie tr)
+  (format t "~a" (net.kaspervandenberg.kb-rdf.ctrie:remove-intern tr 'one (sxhash 'one) 1))
+  (display-ctrie tr))
