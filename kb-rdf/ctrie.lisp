@@ -274,16 +274,16 @@ current operation."))
 	  (sxhash obj) (get-key obj) (sxhash (get-key obj)) (get-value obj)))
 
 
-(defmethod collect-subtree-values (node INode)
+(defmethod collect-subtree-values ((node INode))
   (let ((m (get-main node)))
     (and m (collect-subtree-values m))))
 
 
-(defmethod collect-subtree-values (node CNode)
+(defmethod collect-subtree-values ((node CNode))
   (append (mapcar #'collect-subtree-values (get-branches node))))
 
 
-(defmethod collect-subtree-values (node SNode)
+(defmethod collect-subtree-values ((node SNode))
   (list node))
 
 
