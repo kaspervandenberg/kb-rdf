@@ -261,11 +261,11 @@ current operation."))
   (let ((brs (coerce
 	      (net.kaspervandenberg.kb-rdf.bitindexed-list:get-elements (get-branches obj))
 	      'list)))
-    (format out "~a [shape = record; label =\"~{<~a>~^|~}\"];~%"
-	    (sxhash obj) (mapcar #'(lambda (x) (sxhash x)) brs))
+    (format out "~a [shape = plain; label =<<table><tr><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td></tr></table>>];~%"
+	    (sxhash obj))
     (loop for b in brs
-       do (format out "~a:~a -> ~a;~%"
-		  (sxhash obj) (sxhash b) (sxhash b))
+       do (format out "~a -> ~a;~%"
+		  (sxhash obj) (sxhash b))
        do (print-dot b out))))
 
 
