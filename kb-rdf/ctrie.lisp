@@ -56,14 +56,61 @@ the CTrie root.")
 	    :initarg :value
 	    :reader get-value
 	    :documentation
-	    "The value associated with `key`.  Value can be nil.")
-     (tome :initform nil
-	   :initarg :tome
-	   :reader tomeP
-	   :documentation
-	   "Flag to indicate this node is 'tomed' and should be removed."))
+	    "The value associated with `key`.  Value can be nil."))
   (:documentation
    "Contains the user's data; i.e the value and the key under which it is stored."))
+
+
+(defclass Tombed-CNode ()
+    ((branches :initform (make-instance 'net.kaspervandenberg.kb-rdf.bitindexed-list:BitIndexed-List)
+	       :initarg :branches
+	       :reader get-branches
+	       :documentation
+	       "The branches of this `Tombed-CNode` indexed by some bits from their hash.  Each branch
+is a INode.")
+     (tomb-session-id :initarg :tomb-session-id
+		      :reader get-tomb-session-id
+		      :documentation
+		      "Multiple operations can simultaneously start tomb and rebuild in the same
+sub-tree.  The tomb and rebuild process of the outer tree should should wait for the inner tree to
+finish its tomb and rebuild process and then do the outer sub tree's tomb and rebuild process. This
+prevents additions or removals that occur directly after the inner tree's tomb and rebuild to be
+overwritten by old data from the outer tomb and rebuild process. `tomb-session-id` identifies all
+nodes in the sub tree that where tombed as part of the same tomb-and-rebuild process.  When the
+tombing encounters a child with a different `tomb-session-id`, it knows this sub tree is being
+tombed by a different process and that this sub tree must first finish its `tomb-and-rebuild`
+process before the outer tree can be tombed and rebuilt."))
+  (:documentation
+   "A CNode that has been locked, before any changes to it can be made its subtree must be tombed
+and rebuilt")) 
+
+
+(defclass Tombed-SNode ()
+    ((key :initarg :key
+	  :reader get-key
+	  :documentation
+	  "The key under which this node is indexed.  The key's hash determines the node's path to
+the CTrie root.")
+     (value :initform nil
+	    :initarg :value
+	    :reader get-value
+	    :documentation
+	    "The value associated with `key`.  Value can be nil.")
+     (tomb-session-id :initarg :tomb-session-id
+		      :reader get-tomb-session-id
+		      :documentation
+		      "Multiple operations can simultaneously start tomb and rebuild in the same
+sub-tree.  The tomb and rebuild process of the outer tree should should wait for the inner tree to
+finish its tomb and rebuild process and then do the outer sub tree's tomb and rebuild process. This
+prevents additions or removals that occur directly after the inner tree's tomb and rebuild to be
+overwritten by old data from the outer tomb and rebuild process. `tomb-session-id` identifies all
+nodes in the sub tree that where tombed as part of the same tomb-and-rebuild process.  When the
+tombing encounters a child with a different `tomb-session-id`, it knows this sub tree is being
+tombed by a different process and that this sub tree must first finish its `tomb-and-rebuild`
+process before the outer tree can be tombed and rebuilt."))
+  (:documentation
+   "A SNode that has been locked, before any changes to it can be made its subtree must be tombed and
+rebuilt"))
 
 
 (define-condition dangling-inode (error)
@@ -71,6 +118,13 @@ the CTrie root.")
   (:documentation
    "We found a INode whose `main` is nil.  A parent node should clean it before continuing with the
 current operation."))
+
+
+(define-condition tombed-node (error)
+  ()
+  (:documentation
+   "We encountered a Tombed-node, before the requested add or remove operaterion can be executed, the
+tombed subtree must be completely tombed and rebuilt."))
 
 
 (define-condition duplicate-key (error)
@@ -144,6 +198,12 @@ current operation."))
 
 
 (defmethod find-intern ((node CNode) key key-hash level)
+  (find-intern-cnode node key key-hash level))
+
+(defmethod find-intern ((node Tombed-CNode) key key-hash level)
+  (find-intern-cnode node key key-hash level))
+
+(defun find-intern-cnode (node key key-hash level)
   (multiple-value-bind (child foundP) (cnode-find-child node key-hash level)
     (if foundP
 	(find-intern child key key-hash (1+ level))
@@ -151,6 +211,12 @@ current operation."))
 
 
 (defmethod find-intern ((node SNode) key key-hash level)
+  (find-intern-snode node key key-hash level))
+
+(defmethod find-intern ((node Tombed-SNode) key key-hash level)
+  (find-intern-snode node key key-hash level))
+
+(defmethod find-intern-snode (node key key-hash level)
   (if (equal key (get-key node))
       (values (get-value node) T)))
 
@@ -195,6 +261,14 @@ current operation."))
     (replace-value-with-new () (make-instance 'SNode :key key :value value))))
 
 
+(defmethod add-intern ((node Tombed-CNode) key key-hash level value)
+  (error 'tombed-node))
+
+
+(defmethod add-intern ((node Tombed-SNode) key key-hash level value)
+  (error 'tombed-node))
+
+
 (defmethod remove-intern ((node INode) key key-hash level)
   (let ((m (get-main node)))
     (if (not m)
@@ -231,17 +305,38 @@ current operation."))
     (keep-ctrie-as-is () node)))
 
 
+(defmethod remove-intern ((node Tombed-CNode) key key-hash level)
+  (error 'tombed-node))
+
+
+(defmethod remove-intern ((node Tombed-SNode) key key-hash level)
+  (error 'tombed-node))
+
+
 (defmethod print-object ((obj INode) out)
   (print-unreadable-object (obj out :type t)
     (format out "~%m:~a" (get-main obj))))
 
 
 (defmethod print-object ((obj CNode) out)
+  (print-object-cnode obj out))
+
+(defmethod print-object ((obj Tombed-CNode) out)
+  (print-object-cnode obj out))
+
+(defun print-object-cnode (obj out)
   (print-unreadable-object (obj out :type t)
     (format out "br:~a" (get-branches obj))))
 
 
 (defmethod print-object ((obj SNode) out)
+  (print-object-snode obj out))
+
+
+(defmethod print-object ((obj Tombed-SNode) out)
+  (print-object-snode obj out))
+
+(defun print-object-snode (obj out)
   (print-unreadable-object (obj out :type t)
     (format out "key:~a value:~a" (get-key obj) (get-value obj))))
 
@@ -258,9 +353,7 @@ current operation."))
 
 
 (defmethod print-dot ((obj CNode) out)
-  (let ((brs (coerce
-	      (net.kaspervandenberg.kb-rdf.bitindexed-list:get-elements (get-branches obj))
-	      'list)))
+  (let ((brs (coerce (net.kaspervandenberg.kb-rdf.bitindexed-list:get-elements (get-branches obj)) 'list)))
     (format out "~a [shape = plain; label =<<table><tr><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td></tr></table>>];~%"
 	    (sxhash obj))
     (loop for b in brs
@@ -283,7 +376,15 @@ current operation."))
   (append (mapcar #'collect-subtree-values (get-branches node))))
 
 
+(defmethod collect-subtree-values ((node Tombed-CNode))
+  (append (mapcar #'collect-subtree-values (get-branches node))))
+
+
 (defmethod collect-subtree-values ((node SNode))
+  (list node))
+
+
+(defmethod collect-subtree-values ((node Tombed-SNode))
   (list node))
 
 
