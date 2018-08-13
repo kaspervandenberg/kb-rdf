@@ -57,3 +57,19 @@
   (display-ctrie tr)
   (format t "~a" (net.kaspervandenberg.kb-rdf.ctrie:remove-intern tr 'one (sxhash 'one) 1))
   (display-ctrie tr))
+
+
+(let ((x (net.kaspervandenberg.kb-rdf.ctrie:add-intern
+	  (make-instance 'net.kaspervandenberg.kb-rdf.ctrie:SNode :key 'one :value 1)
+	  'two
+	  (sxhash 'two)
+	  1
+	  2)))
+  (let ((x2 (net.kaspervandenberg.kb-rdf.ctrie:tomb-node x (gensym))))
+    (display-ctrie x2)))
+
+
+(let ((x (net.kaspervandenberg.kb-rdf.ctrie:tomb-node
+	  (make-instance 'net.kaspervandenberg.kb-rdf.ctrie:SNode :key 'one :value 1)
+	  (gensym))))
+  (display-ctrie x))

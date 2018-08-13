@@ -185,6 +185,11 @@ tombed subtree must be completely tombed and rebuilt."))
    "Collect all SNodes in the CTrie rooted at `node`."))
 
 
+(defgeneric tomb-node (node tomb-session-id)
+  (:documentation
+   "Change `node` into a tombed variant"))
+
+
 (defmethod find-intern ((node INode) key key-hash level)
   (let ((m (get-main node)))
     (if (not m)
@@ -293,7 +298,7 @@ tombed subtree must be completely tombed and rebuilt."))
 		    (make-instance 'CNode :branches (net.kaspervandenberg.kb-rdf.bitindexed-list:remove
 						     (get-branches node)
 						     index))
-		    _tomb-and-rebuild))))
+		    (tomb-node node (gensym))))))
     (keep-ctrie-as-is () node)))
 
 
@@ -362,8 +367,33 @@ tombed subtree must be completely tombed and rebuilt."))
        do (print-dot b out))))
 
 
+(defmethod print-dot ((obj Tombed-CNode) out)
+  (let ((brs (coerce (net.kaspervandenberg.kb-rdf.bitindexed-list:get-elements (get-branches obj)) 'list)))
+    (format out "~a [shape = plain; label = <<table><tr><td>╳</td><td>╳</td><td>╳</td><td>╳</td></tr></table>>];~%"
+	    (sxhash obj))
+    (loop for b in brs
+       do (format out "~a -> ~a;~%"
+		  (sxhash obj) (sxhash b))
+       do (print-dot b out))))
+
+
 (defmethod print-dot ((obj SNode) out)
-  (format out "~a [shape = record; label = \"{key: ~a | hash: 0x~x | val: ~a}\"];~%"
+  (format out "~a [shape = plain; label = <
+<table>
+  <tr><td border=\"0\">key:</td><td border=\"0\">~a</td></tr><hr/>
+  <tr><td border=\"0\">hash:</td><td border=\"0\">0x~x</td></tr><hr/>
+  <tr><td border=\"0\">val:</td><td border=\"0\">~a</td></tr>
+</table>>];~%"
+	  (sxhash obj) (get-key obj) (sxhash (get-key obj)) (get-value obj)))
+
+
+(defmethod print-dot ((obj Tombed-SNode) out)
+  (format out "~a [shape = plain; label = <
+<table>
+  <tr><td border=\"0\"><S>key:</S></td><td border=\"0\"><S>~a</S></td></tr><hr/>
+  <tr><td border=\"0\"><S>hash:</S></td><td border=\"0\"><S>0x~x</S></td></tr><hr/>
+  <tr><td border=\"0\"><S>val:</S></td><td border=\"0\"><S>~a</S></td></tr>
+</table>>];~%"
 	  (sxhash obj) (get-key obj) (sxhash (get-key obj)) (get-value obj)))
 
 
@@ -386,6 +416,14 @@ tombed subtree must be completely tombed and rebuilt."))
 
 (defmethod collect-subtree-values ((node Tombed-SNode))
   (list node))
+
+
+(defmethod tomb-node ((node CNode) tomb-session-id)
+  (make-instance 'Tombed-CNode :tomb-session-id tomb-session-id :branches (get-branches node)))
+
+
+(defmethod tomb-node ((node SNode) tomb-session-id)
+  (make-instance 'Tombed-SNode :tomb-session-id tomb-session-id :key (get-key node) :value (get-value node)))
 
 
 (defun inode-cas-if-child-updated (inode fupdate &rest update-args)
