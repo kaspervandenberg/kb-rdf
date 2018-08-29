@@ -121,7 +121,11 @@ current operation."))
 
 
 (define-condition tombed-node (error)
-  ()
+  ((tomb-session-id :initarg :tomb-session-id
+		    :reader get-tomb-session-id
+		    :documentation
+		    "Identifies the session of the encountered tombed-node.  The system should first
+perform a tomb-and-rebuild for all descendants of this node with the same tomb-session-id."))
   (:documentation
    "We encountered a Tombed-node, before the requested add or remove operaterion can be executed, the
 tombed subtree must be completely tombed and rebuilt."))
@@ -188,6 +192,11 @@ tombed subtree must be completely tombed and rebuilt."))
 (defgeneric tomb-node (node tomb-session-id)
   (:documentation
    "Change `node` into a tombed variant"))
+
+
+(defgeneric tomb-children (node tomb-session-id)
+  (:documentation
+   "Recursively descend the subtree and tomb all nodes it contains."))
 
 
 (defmethod find-intern ((node INode) key key-hash level)
@@ -267,11 +276,11 @@ tombed subtree must be completely tombed and rebuilt."))
 
 
 (defmethod add-intern ((node Tombed-CNode) key key-hash level value)
-  (error 'tombed-node))
+  (error 'tombed-node :tomb-session-id (get-tomb-session-id node)))
 
 
 (defmethod add-intern ((node Tombed-SNode) key key-hash level value)
-  (error 'tombed-node))
+  (error 'tombed-node :tomb-session-id (get-tomb-session-id node)))
 
 
 (defmethod remove-intern ((node INode) key key-hash level)
@@ -311,11 +320,11 @@ tombed subtree must be completely tombed and rebuilt."))
 
 
 (defmethod remove-intern ((node Tombed-CNode) key key-hash level)
-  (error 'tombed-node))
+  (error 'tombed-node :tomb-session-id (get-tomb-session-id node)))
 
 
 (defmethod remove-intern ((node Tombed-SNode) key key-hash level)
-  (error 'tombed-node))
+  (error 'tombed-node :tomb-session-id (get-tomb-session-id node)))
 
 
 (defmethod print-object ((obj INode) out)
@@ -424,6 +433,39 @@ tombed subtree must be completely tombed and rebuilt."))
 
 (defmethod tomb-node ((node SNode) tomb-session-id)
   (make-instance 'Tombed-SNode :tomb-session-id tomb-session-id :key (get-key node) :value (get-value node)))
+
+
+(defmethod tomb-node ((node Tombed-CNode) tomb-session-id)
+  (retomb-node node tomb-session-id))
+
+
+(defmethod tomb-node ((node Tombved-SNode) tomb-session-id)
+  (retorm-node node tomb-session-id))
+
+
+(defun retomb-node (node tomb-session-id)
+  (if (equal tomb-session-id (get-tomb-session-id node))
+      node
+      (error 'tombed-node :tomb-session-id (get-tomb-session-id node))))
+
+
+(defmethod tomb-children ((node INode) tomb-session-id)
+  (tomb-node (get-main node) tomb-session-id)
+  (tomb-children (get-main node) tomb-session-id))
+
+
+(defmethod tomb-cildren ((node CNode) tomb-session-id)
+  (mapc (lambda (x) (tomb-children x tomb-session-id)) (get-branches node)))
+
+
+(defmethod tomb-children ((node SNode) tomb-session-id)
+  node)
+
+
+(defmethod tomb-children ((node Tombed-CNode) tomb-session-id)
+  (if (equal tomb-session-id (get-tomb-session-id node))
+      (mapc (lambda (x) (tomb-children x tomb-session-id)))
+      (error 'tombed-node :tomb-session-id (get-tomb-session-id node))))
 
 
 (defun inode-cas-if-child-updated (inode fupdate &rest update-args)
