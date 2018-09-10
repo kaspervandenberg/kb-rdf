@@ -73,3 +73,24 @@
 	  (make-instance 'net.kaspervandenberg.kb-rdf.ctrie:SNode :key 'one :value 1)
 	  (gensym))))
   (display-ctrie x))
+
+
+(defun make-ctrie (n-entries)
+  (labels
+      ((make-roman-number-symbol (i)
+	 (make-symbol (format nil "~@r" i)))
+       (add-node (ctrie i)
+	 (let ((sym (make-roman-number-symbol i)))
+	   (net.kaspervandenberg.kb-rdf.ctrie:add-intern ctrie
+							 sym (sxhash sym)
+							 1 i)))
+       (build-recur (i)
+	 (cond
+	   ((< i 1) (make-instance 'net.kaspervandenberg.kb-rdf.ctrie:SNode
+				   :key 'root
+				   :value 'root))
+	   ((= i 1) (make-instance 'net.kaspervandenberg.kb-rdf.ctrie:SNode
+				   :key (make-roman-number-symbol i)
+				   :value 1))
+	   ((> i 1) (add-node (build-recur (1- i)) i)))))
+    (build-recur n-entries)))
