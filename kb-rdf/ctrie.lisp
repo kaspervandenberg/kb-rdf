@@ -439,8 +439,8 @@ tombed subtree must be completely tombed and rebuilt."))
   (retomb-node node tomb-session-id))
 
 
-(defmethod tomb-node ((node Tombved-SNode) tomb-session-id)
-  (retorm-node node tomb-session-id))
+(defmethod tomb-node ((node Tombed-SNode) tomb-session-id)
+  (retomb-node node tomb-session-id))
 
 
 (defun retomb-node (node tomb-session-id)
@@ -470,7 +470,7 @@ tombed subtree must be completely tombed and rebuilt."))
 
 (defun inode-cas-if-child-updated (inode fupdate &rest update-args)
   "Apply `fupdate` to `inode`.`main`.  If `fupdate` returned an altered object, use cas to
-atomivally update `inode`.`main`."
+atomically update `inode`.`main`."
   (let ((m (get-main inode)))
     (let ((u (apply fupdate m update-args)))
       (if (not (eq m u))
