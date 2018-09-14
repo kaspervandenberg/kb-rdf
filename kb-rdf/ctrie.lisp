@@ -367,7 +367,7 @@ tombed subtree must be completely tombed and rebuilt."))
 
 
 (defmethod print-dot ((obj CNode) out)
-  (let ((brs (coerce (net.kaspervandenberg.kb-rdf.bitindexed-list:get-elements (get-branches obj)) 'list)))
+  (let ((brs (get-branch-elements-list obj)))
     (format out "~a [shape = plain; label =<<table><tr><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td></tr></table>>];~%"
 	    (sxhash obj))
     (loop for b in brs
@@ -377,7 +377,7 @@ tombed subtree must be completely tombed and rebuilt."))
 
 
 (defmethod print-dot ((obj Tombed-CNode) out)
-  (let ((brs (coerce (net.kaspervandenberg.kb-rdf.bitindexed-list:get-elements (get-branches obj)) 'list)))
+  (let ((brs (get-branch-elements-list obj)))
     (format out "~a [shape = plain; label = <<table><tr><td>╳</td><td>╳</td><td>╳</td><td>╳</td></tr></table>>];~%"
 	    (sxhash obj))
     (loop for b in brs
@@ -412,11 +412,11 @@ tombed subtree must be completely tombed and rebuilt."))
 
 
 (defmethod collect-subtree-values ((node CNode))
-  (append (mapcar #'collect-subtree-values (get-branches node))))
+  (append (mapcar #'collect-subtree-values (get-branch-elements-list node))))
 
 
 (defmethod collect-subtree-values ((node Tombed-CNode))
-  (append (mapcar #'collect-subtree-values (get-branches node))))
+  (append (mapcar #'collect-subtree-values (get-branch-elements-list node))))
 
 
 (defmethod collect-subtree-values ((node SNode))
@@ -454,8 +454,8 @@ tombed subtree must be completely tombed and rebuilt."))
   (tomb-children (get-main node) tomb-session-id))
 
 
-(defmethod tomb-cildren ((node CNode) tomb-session-id)
-  (mapc (lambda (x) (tomb-children x tomb-session-id)) (get-branches node)))
+(defmethod tomb-children ((node CNode) tomb-session-id)
+  (mapc (lambda (x) (tomb-children x tomb-session-id)) (get-branch-elements-list node)))
 
 
 (defmethod tomb-children ((node SNode) tomb-session-id)
@@ -500,3 +500,7 @@ of the child is or could be in the CNode's branches."
 
 (defun cnode-has-at-least-two-non-empty-branches (node)
   (<= 2 (count-if #'(lambda (x) (get-main x)) (get-branches node))))
+
+
+(defun get-branch-elements-list (node)
+  (coerce (net.kaspervandenberg.kb-rdf.bitindexed-list:get-elements (get-branches node)) 'list))
