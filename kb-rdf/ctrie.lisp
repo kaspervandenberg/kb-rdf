@@ -450,7 +450,7 @@ tombed subtree must be completely tombed and rebuilt."))
 
 
 (defmethod tomb-children ((node INode) tomb-session-id)
-  (tomb-node (get-main node) tomb-session-id)
+  (inode-cas-if-not-child-tombed node #'tomb-node tomb-session-id)
   (tomb-children (get-main node) tomb-session-id))
 
 
@@ -464,7 +464,13 @@ tombed subtree must be completely tombed and rebuilt."))
 
 (defmethod tomb-children ((node Tombed-CNode) tomb-session-id)
   (if (equal tomb-session-id (get-tomb-session-id node))
-      (mapc (lambda (x) (tomb-children x tomb-session-id)))
+      (mapc (lambda (x) (tomb-children x tomb-session-id)) (get-branch-elements-list node))
+      (error 'tombed-node :tomb-session-id (get-tomb-session-id node))))
+
+
+(defmethod tomb-children ((node Tombed-SNode) tomb-session-id)
+  (if (equal tomb-session-id (get-tomb-session-id node))
+      node
       (error 'tombed-node :tomb-session-id (get-tomb-session-id node))))
 
 
@@ -479,6 +485,21 @@ atomically update `inode`.`main`."
 		inode
 		(inode-cas-if-child-updated inode fupdate update-args)))
 	  inode))))
+
+
+(defun inode-cas-if-not-child-tombed (inode fupdate &rest update-args)
+  "If `inode`.`main` is not a tombed-node (i.e. `Tombed-CNode` or Tombed-SNode`) call `fupdate` and
+use cas to atomically update `inode`.`main` until `main` is tombed."
+  (let ((m (get-main inode)))
+    (if (not (and m
+		  (or (typep m 'Tombed-SNode)
+		      (typep m 'Tombed-CNode))))
+	(progn
+	  (sb-ext:compare-and-swap (slot-value inode 'main)
+				   m
+				   (apply fupdate m update-args))
+	  (inode-cas-if-not-child-tombed inode fupdate update-args))
+	inode)))
 
 
 (defun cnode-find-child (cnode key-hash level)
