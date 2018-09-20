@@ -19,7 +19,7 @@
 (in-package :net.kaspervandenberg.kb-rdf.bitindexed-list)
 
 
-(defconstant bucket-size 4)
+(defconstant bucket-size 16)
 
 
 (defclass BitIndexed-List ()

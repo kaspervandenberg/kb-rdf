@@ -31,7 +31,7 @@
   (uiop:with-temporary-file (:pathname png-data :keep t)
     (let ((dot-process (uiop:launch-program `("/usr/bin/dot" "-Tpng" ,(concatenate 'string "-o" (namestring png-data))) :input :stream)))
       (let ((dot-program (uiop:process-info-input dot-process)))
-	(format dot-program "digraph g {~%")
+	(format dot-program "digraph g {~%rankdir=LR~%")
 	(net.kaspervandenberg.kb-rdf.ctrie:print-dot ctrie dot-program)
 	(format dot-program "}~%")
 	(uiop:close-streams dot-process))
@@ -78,12 +78,12 @@
 (defun make-ctrie (n-entries)
   (labels
       ((make-roman-number-symbol (i)
-	 (make-symbol (format nil "~@r" i)))
+	 (intern (format nil "~@r" i)))
        (add-node (ctrie i)
 	 (let ((sym (make-roman-number-symbol i)))
 	   (net.kaspervandenberg.kb-rdf.ctrie:add-intern ctrie
 							 sym (sxhash sym)
-							 1 i)))
+							 0 i)))
        (build-recur (i)
 	 (cond
 	   ((< i 1) (make-instance 'net.kaspervandenberg.kb-rdf.ctrie:SNode
