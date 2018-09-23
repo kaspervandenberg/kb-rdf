@@ -22,7 +22,7 @@
 	     from 0
 	     below bucket-n-bits
 	       collect (ash 1 i))))
-
+;;; Classes
 (defclass INode ()
     ((main :initform nil
 	   :initarg :main
@@ -113,6 +113,7 @@ process before the outer tree can be tombed and rebuilt."))
 rebuilt"))
 
 
+;;; Conditions
 (define-condition dangling-inode (error)
   ()
   (:documentation
@@ -157,6 +158,7 @@ tombed subtree must be completely tombed and rebuilt."))
    "The CTrie does not contain the key that you attempt to remove."))
 
 
+;;; Generic methods
 (defgeneric find-intern (node key key-hash level)
   (:documentation
    "Search for `key` in `node` and its children.  If it is found, two values are returned: the
@@ -198,7 +200,8 @@ tombed subtree must be completely tombed and rebuilt."))
   (:documentation
    "Recursively descend the subtree and tomb all nodes it contains."))
 
-
+;;; Method implementations
+;; find-intern
 (defmethod find-intern ((node INode) key key-hash level)
   (let ((m (get-main node)))
     (if (not m)
@@ -234,7 +237,7 @@ tombed subtree must be completely tombed and rebuilt."))
   (if (equal key (get-key node))
       (values (get-value node) T)))
 
-
+;; add-intern
 (defmethod add-intern ((node INode) key key-hash level value)
   (let ((m (get-main node)))
     (if (not m)
@@ -283,6 +286,7 @@ tombed subtree must be completely tombed and rebuilt."))
   (error 'tombed-node :tomb-session-id (get-tomb-session-id node)))
 
 
+;; remove-intern
 (defmethod remove-intern ((node INode) key key-hash level)
   (let ((m (get-main node)))
     (if (not m)
@@ -327,6 +331,7 @@ tombed subtree must be completely tombed and rebuilt."))
   (error 'tombed-node :tomb-session-id (get-tomb-session-id node)))
 
 
+;; print-object
 (defmethod print-object ((obj INode) out)
   (print-unreadable-object (obj out :type t)
     (format out "~%m:~a" (get-main obj))))
@@ -354,7 +359,7 @@ tombed subtree must be completely tombed and rebuilt."))
   (print-unreadable-object (obj out :type t)
     (format out "key:~a value:~a" (get-key obj) (get-value obj))))
 
-
+;; print-dot
 (defmethod print-dot ((obj INode) out)
   (let ((m (get-main obj)))
     (if m
@@ -406,6 +411,7 @@ tombed subtree must be completely tombed and rebuilt."))
 	  (sxhash obj) (get-key obj) (sxhash (get-key obj)) (get-value obj)))
 
 
+;; collect-subtree-values
 (defmethod collect-subtree-values ((node INode))
   (let ((m (get-main node)))
     (and m (collect-subtree-values m))))
@@ -427,6 +433,7 @@ tombed subtree must be completely tombed and rebuilt."))
   (list node))
 
 
+;; tomb-node
 (defmethod tomb-node ((node CNode) tomb-session-id)
   (make-instance 'Tombed-CNode :tomb-session-id tomb-session-id :branches (get-branches node)))
 
@@ -449,6 +456,7 @@ tombed subtree must be completely tombed and rebuilt."))
       (error 'tombed-node :tomb-session-id (get-tomb-session-id node))))
 
 
+;; tomb-children
 (defmethod tomb-children ((node INode) tomb-session-id)
   (inode-cas-if-not-child-tombed node #'tomb-node tomb-session-id)
   (tomb-children (get-main node) tomb-session-id))
@@ -474,6 +482,7 @@ tombed subtree must be completely tombed and rebuilt."))
       (error 'tombed-node :tomb-session-id (get-tomb-session-id node))))
 
 
+;; inode-cas
 (defun inode-cas-if-child-updated (inode fupdate &rest update-args)
   "Apply `fupdate` to `inode`.`main`.  If `fupdate` returned an altered object, use cas to
 atomically update `inode`.`main`."
@@ -502,6 +511,7 @@ use cas to atomically update `inode`.`main` until `main` is tombed."
 	inode)))
 
 
+;; cnode children
 (defun cnode-find-child (cnode key-hash level)
   "Find the CNode's child with the given key-hash.
 Returns three values: the child, a boolean that indicates whether the child was found and the index
