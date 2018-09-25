@@ -20,5 +20,9 @@
 		    :depends-on ("package"))
 	     (:file "find-intern"
 		    :depends-on ("internal-generics" "conditions" "cnode-children"))
+	     (:file "collect-subtree-values"
+		    :depends-on ("internal-generics" "cnode-children" "util"))
 	     (:file "cnode-children"
+		    :depends-on ("package"))
+	     (:file "util"
 		    :depends-on ("package"))))))

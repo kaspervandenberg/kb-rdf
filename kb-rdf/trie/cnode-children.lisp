@@ -23,3 +23,7 @@ of the child is or could be in the CNode's branches."
   (logand (ash key-hash
 	       (* -1 level bucket-n-bits))
 	  bucket-bitmask))
+
+
+(defun get-branch-elements-list (node)
+  (coerce (net.kaspervandenberg.kb-rdf.bitindexed-list:get-elements (get-branches node)) 'list))
