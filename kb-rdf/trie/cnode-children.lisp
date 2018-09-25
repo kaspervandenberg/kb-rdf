@@ -16,3 +16,10 @@ of the child is or could be in the CNode's branches."
     (multiple-value-bind (child foundP)
 	(net.kaspervandenberg.kb-rdf.bitindexed-list:find (get-branches cnode) index)
       (values child foundP index))))
+
+
+(defun key-hash-to-index (key-hash level)
+  "Select the correct part of `key-hash` for `level`."
+  (logand (ash key-hash
+	       (* -1 level bucket-n-bits))
+	  bucket-bitmask))

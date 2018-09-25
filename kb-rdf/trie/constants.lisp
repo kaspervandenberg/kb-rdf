@@ -16,7 +16,7 @@
 (defconstant bucket-bitmask
   (apply #'logior (loop for i
 		     from 0
-		     below bocket-n-bits
+		     below bucket-n-bits
 		     collect (ash 1 i)))
   "Bitmask used to extract the bits to use as index in the bitindexed-list from the key.")
 
