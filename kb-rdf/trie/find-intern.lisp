@@ -36,4 +36,4 @@
   (let ((m (get-main node)))
     (if m
 	(find-intern m key key-hash level path-to-parent)
-	(error 'dangling-inode))))
+	(error 'dangling-inode :node (cons node path-to-parent)))))
