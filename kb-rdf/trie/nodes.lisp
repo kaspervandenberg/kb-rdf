@@ -105,3 +105,12 @@ as tombed, collect them, and rebuild the subtree."))
 
 (defclass SNode-ro (SNode Immutable-Trie-Mixin)
   ())
+
+(defclass INode-c (INode Concurrent-Trie-Mixin)
+  ())
+
+(defclass CNode-c (CNode Concurrent-Trie-Mixin)
+  ())
+
+(defclass SNode-c (SNode Concurrent-Trie-Mixin)
+  ())

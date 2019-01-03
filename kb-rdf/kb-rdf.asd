@@ -1,5 +1,6 @@
 ;;;; kb-rdf system
 
+;;;; © Kasper van den Berg, 2018
 
 (defsystem "kb-rdf"
   :components
@@ -19,10 +20,23 @@
 	     (:file "internal-generics"
 		    :depends-on ("package"))
 	     (:file "find-intern"
-		    :depends-on ("internal-generics" "conditions" "cnode-children"))
+		    :depends-on ("internal-generics"
+				 "nodes"
+				 "conditions"
+				 "cnode-children"))
 	     (:file "collect-subtree-values"
-		    :depends-on ("internal-generics" "cnode-children" "util"))
+		    :depends-on ("internal-generics"
+				 "nodes"
+				 "cnode-children"
+				 "util"))
+	     (:file "add-intern"
+		    :depends-on ("internal-generics"
+				 "nodes"
+				 "factory-methods"))
 	     (:file "cnode-children"
-		    :depends-on ("package"))
+		    :depends-on ("package"
+				 "nodes"))
+	     (:file "factory-methods"
+		    :depends-on ("nodes"))
 	     (:file "util"
 		    :depends-on ("package"))))))
