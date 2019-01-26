@@ -6,4 +6,10 @@
   :components
   ((:module bitindexed-list
 	    :components
-	    ((:file "bitindexed-list")))))
+	    ((:file "bitindexed-list")))
+   (:module trie
+	    :depends-on ("bitindexed-list")
+	    :components
+	    ((:file "package")
+	     (:file "nodes"
+		    :depends-on ("package"))))))
