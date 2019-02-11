@@ -14,4 +14,6 @@
 	    :components
 	    ((:file "package")
 	     (:file "nodes"
+		    :depends-on ("package"))
+	     (:file "keys"
 		    :depends-on ("package"))))))
