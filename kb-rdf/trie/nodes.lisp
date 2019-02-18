@@ -53,6 +53,18 @@ Value can be `nil`."))
    "Leave node that contains the user's data; i.e. a value and the key under which it is stored."))
 
 
+(defclass CSNode (CNode SNode)
+  ()
+  (:documentation
+   "Combination of a `CNode` and `SNode` for tries with `Hierarchical-Keys`.
+
+A `CSNode` is used for tries with `Hierarchical-Keys`.  When the `hash-fragment`
+identifies a single sub key (i.e. `prefix` and `val`) of a `Hierarchical-Key`,
+an `CSNode` is used to store the common non-branching path of the key's `prefix`
+and `val` sub keys as `key`.  Possible `suffixes` (there may be different
+suffixes) are store as offspring nodes in `branches`."))
+
+
 (defclass INode (NodeBase)
   ((main :initform nil
 	 :initarg :main
@@ -71,13 +83,26 @@ CTries concurrent; regular trie do not contain INodes."))
 (defclass Immutable-Trie-Mixin (NodeBase)
   ()
   (:documentation
-   "Nodes of immutable Tries"))
+   "Nodes of immutable Tries.
+
+`Immutable-Tries` can be used in functional programming pure functions.  In
+functional terms these data structures are persistent.
+
+`Immutable-Tries` and `Concurrent-Tries` are mutually exclusive."))
 
 
 (defclass Concurrent-Trie-Mixin (NodeBase)
   ()
   (:documentation
-   "Nodes of CTries, Aleskandar Prokopec's Cache-Aware Lock-Free Concurrent Hash Tries"))
+   "Nodes of CTries, Aleskandar Prokopec's Cache-Aware Lock-Free Concurrent Hash Tries.
+
+`Immutable-Tries` and `Concurrent-Tries` are mutually exclusive."))
+
+
+(defclass Hierarchical-Trie-Mixin (NodeBase)
+  ()
+  (:documentation
+   "Nodes of tries that have hierarchical keys and that may contain `CSNodes`."))
 
 
 ;;; Condition mixins
@@ -113,4 +138,25 @@ as tombed, collect them, and rebuild the subtree."))
   ())
 
 (defclass SNode-c (SNode Concurrent-Trie-Mixin)
+  ())
+
+(defclass CNode-hro (CNode Hierarchical-Trie-Mixin Immutable-Trie-Mixin)
+  ())
+
+(defclass SNode-hro (SNode Hierarchical-Trie-Mixin Immutable-Trie-Mixin)
+  ())
+
+(defclass CSNode-hro (CSNode Hierarchical-Trie-Mixin Immutable-Trie-Mixin)
+  ())
+
+(defclass INode-hc (INode Hierarchical-Trie-Mixin Concurrent-Trie-Mixin)
+  ())
+
+(defclass CNode-hc (CNode Hierarchical-Trie-Mixin Concurrent-Trie-Mixin)
+  ())
+
+(defclass SNode-hc (SNode Hierarchical-Trie-Mixin Concurrent-Trie-Mixin)
+  ())
+
+(defclass CSNode-hc (CSNode Hierarchical-Trie-Mixin Concurrent-Trie-Mixin)
   ())
