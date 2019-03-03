@@ -15,5 +15,8 @@
 	    ((:file "package")
 	     (:file "nodes"
 		    :depends-on ("package"))
+	     (:file "conditions"
+		    :depends-on ("package"))
 	     (:file "keys"
-		    :depends-on ("package"))))))
+		    :depends-on ("package"
+				 "conditions"))))))
